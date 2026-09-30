@@ -1,0 +1,11 @@
+baseURL = "https://chiheng163.github.io/boke/"
+languageCode = "zh-cn"
+defaultContentLanguage = "zh-cn"
+title = "chiheng163 的博客"
+timeZone = "Asia/Shanghai"
+
+[taxonomies]
+  tag = "tags"
+
+[params]
+  author = "chiheng163"

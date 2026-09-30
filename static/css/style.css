@@ -1,0 +1,74 @@
+:root {
+  color-scheme: light dark;
+  --fg: #24292f;
+  --bg: #ffffff;
+  --muted: #57606a;
+  --link: #0969da;
+  --border: #d0d7de;
+  --code-bg: #f6f8fa;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fg: #e6edf3;
+    --bg: #0d1117;
+    --muted: #8b949e;
+    --link: #4493f8;
+    --border: #30363d;
+    --code-bg: #161b22;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.75 -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+.site-header, .site-footer, .site-main {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 1rem 1.25rem;
+}
+
+.site-header { border-bottom: 1px solid var(--border); }
+.site-footer { border-top: 1px solid var(--border); color: var(--muted); font-size: 0.875rem; }
+.site-title { color: var(--fg); font-weight: 600; text-decoration: none; }
+
+a { color: var(--link); }
+
+h1, h2, h3 { line-height: 1.35; }
+
+.post-list { list-style: none; padding: 0; }
+.post-list li { display: flex; justify-content: space-between; gap: 1rem; padding: 0.35rem 0; }
+.post-list time, .post-meta { color: var(--muted); font-size: 0.875rem; }
+
+.post-tags { list-style: none; display: flex; flex-wrap: wrap; gap: 0.5rem; padding: 0; }
+.post-tags li { border: 1px solid var(--border); border-radius: 999px; padding: 0.1rem 0.6rem; font-size: 0.8125rem; }
+.post-tags a { text-decoration: none; }
+
+pre {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow-x: auto;
+  padding: 0.85rem 1rem;
+}
+
+code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 0.9em; }
+:not(pre) > code { background: var(--code-bg); padding: 0.15em 0.35em; border-radius: 4px; }
+
+blockquote {
+  margin: 1rem 0;
+  padding: 0 1rem;
+  border-left: 3px solid var(--border);
+  color: var(--muted);
+}
+
+img { max-width: 100%; }
+
+table { border-collapse: collapse; width: 100%; }
+th, td { border: 1px solid var(--border); padding: 0.4rem 0.6rem; }
