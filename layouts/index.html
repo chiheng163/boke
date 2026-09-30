@@ -1,0 +1,12 @@
+{{ define "main" }}
+  <h1 class="page-title">{{ site.Title }}</h1>
+  {{ with .Content }}<div class="page-content">{{ . }}</div>{{ end }}
+  <ul class="post-list">
+    {{ range .RegularPagesRecursive }}
+    <li>
+      <a href="{{ .RelPermalink }}">{{ .Title }}</a>
+      <time datetime="{{ .Date.Format "2006-01-02" }}">{{ .Date.Format "2006-01-02" }}</time>
+    </li>
+    {{ end }}
+  </ul>
+{{ end }}
