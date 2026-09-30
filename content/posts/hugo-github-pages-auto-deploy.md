@@ -17,9 +17,9 @@ author: chiheng163
 
 代价是 Go template 的学习曲线，但博客用到的能力（列表、标签、单页）集中在少数模板里，看懂一次可长期复用。
 
-GitHub Pages 免费，但有明确边界。官方限额是：源仓库与已发布站点都不超过 1 GB、软带宽上限 100 GB/月、单次部署超过 10 分钟超时、软限制 10 次构建/小时——不过最后这条明确写着「在使用自定义 GitHub Actions 工作流构建时不适用」，这正是本文选 workflow 模式的理由之一。public 仓库用 GitHub Free 即可，private 仓库需 Pro 及以上。
+GitHub Pages 免费，但有边界：源仓库与站点各不超过 1 GB、软带宽上限 100 GB/月、单次部署超 10 分钟超时、软限制 10 次构建/小时——最后这条明确写着「用自定义 Actions 工作流构建时不适用」，这正是本文选 workflow 模式的理由之一。public 仓库用 GitHub Free 即可，private 需 Pro 及以上。
 
-适用场景：个人技术博客、文档站、项目主页，以「写 + 发」为主的内容。不划算的是需要评论、全文搜索、在线后台编辑的站点。
+适用场景：个人技术博客、文档站、项目主页。不划算的是需要评论、全文搜索、在线后台编辑的站点。
 
 ## 三层结构：写作层、Git 层、CI 层
 
@@ -29,7 +29,7 @@ GitHub Pages 免费，但有明确边界。官方限额是：源仓库与已发�
 - Git 层：`main` 分支即发布状态，你只往分支提交，merge 进 main 就代表「要发布」。
 - CI 层：GitHub Actions 负责构建 `public/` 并部署，你永远不手工碰它。
 
-【为什么重要】把「发布」和「构建」解耦后，发布退化成一次 merge。你不需要在本地装 Hugo 也能发稿——只要 Markdown 写对了，剩下的交给 CI。同时这也锁死一条纪律：`public/` 是构建产物，会被 Hugo 重建，官方文档明确警告「不要把 publishDir 提交进仓库」，也绝不手工推 `gh-pages` 分支，否则仓库里会出现两套页面。
+【为什么重要】把「发布」和「构建」解耦后，发布退化成一次 merge，不需要在本地装 Hugo 也能发稿——只要 Markdown 写对，剩下交给 CI。这还锁死一条纪律：`public/` 是构建产物会被 Hugo 重建，官方文档明确警告「不要把 publishDir 提交进仓库」，也绝不手工推 `gh-pages` 分支，否则仓库里会出现两套页面。
 
 ## 最短可用路径：从空仓库到本地看到第一篇文章
 
@@ -48,7 +48,7 @@ hugo new project boke --format yaml
 cd boke
 ```
 
-另一个过时说法是「必须装 Hugo Extended 才能用 SCSS」。现在不成立：官方 GitHub Pages 工作流下载的就是非 extended 版本，extended 版独有的 LibSass 支持自 v0.153.0 起已被弃用，官方建议改用与任何 edition 兼容的 Dart Sass。
+另一个过时说法是「必须装 Hugo Extended 才能用 SCSS」。现在不成立：官方 GitHub Pages 工作流下载的就是非 extended 版，extended 独有的 LibSass 自 v0.153.0 起已弃用，官方建议改用与任何 edition 兼容的 Dart Sass。
 
 引入主题用 git submodule（这也是官方快速上手的方式）：
 
@@ -66,11 +66,11 @@ hugo server -D
 
 `-D` 是 `--buildDrafts` 的简写，草稿默认不发布，本地预览时需要它。
 
-【为什么重要】本地预览跑通 ≠ CI 能构建。CI 里要多做三件事：拉取主题 submodule、装 Dart Sass 和 Node 依赖、用 CI 的 baseURL 覆盖本地配置。预览只是第一关，真正能保证「可发布」的是下面这份工作流。
+【为什么重要】本地预览跑通 ≠ CI 能构建。CI 里要多做三件事：拉取主题 submodule、装 Dart Sass 和 Node 依赖、用 CI 的 baseURL 覆盖本地配置。预览只是第一关，下面这份工作流才真正保证可发布。
 
 ## GitHub Pages 的两种构建模式与官方 Actions 工作流
 
-GitHub Pages 有两种发布源：branch/legacy 是「推分支后由 GitHub 构建」，workflow 是「由你的自定义 Actions 构建」。本文用 workflow（API 里的 `build_type=workflow`）：既有「10 次/小时软限制不适用」的好处，也能完全控制构建步骤。
+GitHub Pages 有两种发布源：branch/legacy 是「推分支后由 GitHub 构建」，workflow 是「由你的自定义 Actions 构建」。本文用 workflow（API 的 `build_type=workflow`）：「10 次/小时软限制不适用」，且能完全控制构建步骤。
 
 启用方式在仓库 Settings > Pages，把 Source 改成 GitHub Actions，官方说明「改动立即生效，无需点保存」。
 
@@ -110,7 +110,7 @@ jobs:
             "https://github.com/gohugoio/hugo/releases/download/v${HUGO_VERSION}/hugo_${HUGO_VERSION}_linux-amd64.tar.gz"
           tar -xzf "${{ runner.temp }}/hugo.tar.gz" -C "${{ runner.temp }}"
           echo "${{ runner.temp }}" >> "$GITHUB_PATH"
-          hugo version
+          "${{ runner.temp }}/hugo" version
       - name: Install Dart Sass
         run: sudo snap install dart-sass
       - name: Checkout
@@ -151,14 +151,15 @@ jobs:
 
 逐项解释，这些字段不是装饰：
 
+- `Install Hugo CLI` 最后一行要用绝对路径 `"${{ runner.temp }}/hugo" version`：`$GITHUB_PATH` 只对后续 step 生效，同一步骤内 `hugo` 还没进 PATH，直接调 `hugo version` 会 exit 127。
 - `permissions` 里 `pages: write` 授权 GITHUB_TOKEN 调 Pages API 建部署，`id-token: write` 用来申请 OIDC JWT、校验部署来源。缺了 `id-token`，部署 job 直接失败。
-- `concurrency: group: "pages" / cancel-in-progress: false` 保证同一时刻只有一个部署在跑，且不取消正在进行的那次，避免生产部署被打断。
+- `concurrency: group: "pages" / cancel-in-progress: false` 保证同一时刻只有一个部署在跑，且不取消进行中的那次，避免生产部署被打断。
 - 四个 action 版本号固定：`actions/checkout@v7`、`actions/configure-pages@v6`、`actions/upload-pages-artifact@v5`、`actions/deploy-pages@v5`。
 - `--baseURL "${{ steps.pages.outputs.base_url }}/"` 的尾斜杠必须：`configure-pages` 输出的 `base_url` 不带尾斜杠，而 Hugo 的 `baseURL` 定义要求结尾斜杠。
-- `upload-pages-artifact` 的 `path: ./public` 把构建产物打成名为 `github-pages` 的 gzip 包；artifact 要求单个 tar、不含符号链接，默认排除 `.git` 和 `.github`。
-- `deploy` job 的 `needs: build` 和 `environment: github-pages` 都是 deploy-pages 的硬性要求，缺了 `needs` 会「独立部署、持续找不到 artifact」。
+- `upload-pages-artifact` 的 `path: ./public` 把构建产物打成名为 `github-pages` 的 gzip 包；artifact 要求单个 tar、不含符号链接，默认排除 `.git`、`.github`。
+- `deploy` job 的 `needs: build` 与 `environment: github-pages` 是 deploy-pages 的硬性要求，缺了 `needs` 会「独立部署、持续找不到 artifact」。
 
-【为什么重要】这段 YAML 是整条链路的枢纽。版本号一旦写错（比如照抄 GitHub 自家已过时的 Hugo starter workflow，它写的还是 hugo 0.128.0、checkout@v4、upload@v3），构建就会失败或产物错误。所以版本号以 Hugo 官方文档为准，而不是 GitHub 的 starter 模板。
+【为什么重要】这段 YAML 是整条链路的枢纽。版本号一旦写错（比如照抄 GitHub 已过时的 Hugo starter workflow，版本还停在 hugo 0.128.0），构建就会失败或产物错误。所以版本号以 Hugo 官方文档为准。
 
 ## 文章格式约定：frontmatter、slug 与资源组织
 
@@ -176,14 +177,14 @@ author: chiheng163
 几点要说明清楚：
 
 - `tags` 是分类法（taxonomy），只有在配置里定义了 `[taxonomies] tag = 'tags'` 才会生成标签页，否则只是元数据。
-- `author` 不是 Hugo 保留字段，官方示例放在 `params:` 下；自定义字段应放 `params` 键下。
+- `author` 不是 Hugo 保留字段，官方示例和自定义字段都应放在 `params:` 下。
 - `date` 写 `2026-09-30` 这种不完整格式时，Hugo 默认按 `Etc/UTC` 解析，可能造成时区偏差，要避免就在配置里显式设 `timeZone`。
 
 URL 稳定性是最关键的一点。Hugo 渲染出的 URL 默认等于 `content` 下的文件路径（`content/posts/post-1.md` → `/posts/post-1/`），`slug` 只覆盖最后一段路径，`url` 覆盖整条路径且不被清洗。所以：
 
 【为什么重要】slug 一旦发布就不该改。改了 slug 等于改 URL，旧链接、索引、收藏全失效。要在发布前定下 slug，并且用 ASCII——非 ASCII 文件名会被百分号编码（官方示例 `Hugö → hug%C3%B6`），中文文件名会变成一长串难读的链接。
 
-图片有两种组织方式：放 `static/` 下，会原样拷贝进 `public/`，用绝对路径引用；或者用 page bundle（含 `index.md` 的目录），把图片和文章放一起作为 page resource 引用。前者适合全站共享资源，后者适合单篇配图。
+图片有两种组织方式：放 `static/` 下，原样拷贝进 `public/`，用绝对路径引用；或用 page bundle（含 `index.md` 的目录）把图片和文章放一起作为 page resource 引用。前者适合全站共享，后者适合单篇配图。
 
 ## 发布流程：分支、PR、合并触发部署
 
@@ -211,20 +212,21 @@ curl -X POST \
 
 【为什么重要】token 只从环境变量 `GITHUB_PERSONAL_ACCESS_TOKEN` 读，绝不写进任何文件。写进仓库的历史记录里等于泄露凭据。
 
-合并 PR 之后，别急着宣告成功，回读验证三件事：
+合并 PR 之后，别急着宣告成功，回读验证两件事：
 
-1. Actions run 结论：`GET /repos/{owner}/{repo}/actions/runs`
-2. Pages 状态：`GET /repos/{owner}/{repo}/pages`，响应里的 `status` 应为 `built`
-3. 访问真实 URL 确认可打开
+1. Actions run 结论：`GET /repos/{owner}/{repo}/actions/runs`，最新一次 run 的 `conclusion` 应为 `success`。
+2. 直接访问 URL：目标页面返回 HTTP 200。
+
+注意：`GET /repos/{owner}/{repo}/pages` 的 `status` 在 workflow 模式下不可靠——本仓库实测为 `null`（不是 `built`），未鉴权查询甚至返回 404。可靠判据就是上面两条。
 
 本仓库是项目站点（仓库名 `boke`），默认地址带仓库名路径：`https://chiheng163.github.io/boke/`，文章预期落在 `https://chiheng163.github.io/boke/posts/hugo-github-pages-auto-deploy/`。
 
 ## 常见坑与排错清单
 
-- **baseURL 不匹配 → CSS/图片 404**。现象：页面结构在但样式全丢。处理：工作流里显式拼 `--baseURL "${{ steps.pages.outputs.base_url }}/"`，因为 `configure-pages` 输出的 `base_url` 不带尾斜杠。
+- **baseURL 不匹配 → CSS/图片 404**。现象：页面结构在但样式全丢。处理：工作流里给 `--baseURL` 显式拼尾斜杠（见上文 YAML 逐项解释）。
 - **主题 submodule 未拉取 → 构建失败**。处理：checkout 用 `submodules: recursive` 并跑 `git submodule update --init --recursive`。Pages 只能访问 public 仓库的 submodule，且必须用 `https://` 只读 URL。
-- **权限字段缺失 → 部署失败**。处理：对照工作流的 `permissions` 和 `deploy` 段补齐 `pages: write`、`id-token: write`、`needs` 和 `github-pages` 环境。
-- **首次部署 404**。依据官方排查清单：Status 故障、DNS、浏览器缓存、`index.html` 必须在发布源顶层（大小写敏感）。处理：确认 artifact 顶层有 `index.html`，再清缓存、查 Status。
+- **权限字段缺失 → 部署失败**。处理：对照上文工作流补齐 `pages: write`、`id-token: write`、`needs`、`github-pages` 环境。
+- **首次部署 404**。依据官方排查清单：Status 故障、DNS、浏览器缓存、`index.html` 必须在发布源顶层。处理：确认 artifact 顶层有 `index.html`，再清缓存、查 Status。
 - **「改了看不到」**。浏览器缓存是已知原因，同时 `public/` 每次部署都是新 artifact。处理：硬刷新（Ctrl+F5），或等部署跑完。
 - **构建超时**。Pages 部署超过 10 分钟即超时，`deploy-pages` 默认 timeout 也是 600000 ms。处理：控制站点体积、图片缓存指向 `cacheDir`。
 - **时区导致日期偏差**。`2026-09-30` 默认按 UTC 解析。处理：配置里设 `timeZone`。
